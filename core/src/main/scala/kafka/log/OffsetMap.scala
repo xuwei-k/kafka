@@ -81,7 +81,7 @@ class SkimpyOffsetMap(val memory: Int, val hashAlgorithm: String = "MD5") extend
    * @param key The key
    * @param offset The offset
    */
-  override def put(key: ByteBuffer, offset: Long) {
+  override def put(key: ByteBuffer, offset: Long): Unit = {
     require(entries < slots, "Attempt to add a new entry to a full offset map.")
     lookups += 1
     hashInto(key, hash1)
@@ -144,7 +144,7 @@ class SkimpyOffsetMap(val memory: Int, val hashAlgorithm: String = "MD5") extend
   /**
    * Change the salt used for key hashing making all existing keys unfindable.
    */
-  override def clear() {
+  override def clear(): Unit = {
     this.entries = 0
     this.lookups = 0L
     this.probes = 0L
@@ -191,7 +191,7 @@ class SkimpyOffsetMap(val memory: Int, val hashAlgorithm: String = "MD5") extend
    * @param key The key to hash
    * @param buffer The buffer to store the hash into
    */
-  private def hashInto(key: ByteBuffer, buffer: Array[Byte]) {
+  private def hashInto(key: ByteBuffer, buffer: Array[Byte]): Unit = {
     key.mark()
     digest.update(key)
     key.reset()

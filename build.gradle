@@ -323,6 +323,7 @@ subprojects {
   tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = [
       "-deprecation",
+      "-Xfuture",
       "-unchecked",
       "-encoding", "utf8",
       "-Xlog-reflective-calls",

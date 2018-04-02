@@ -56,7 +56,7 @@ class SaslPlainSslEndToEndAuthorizationTest extends SaslEndToEndAuthorizationTes
    * have expected ACLs.
    */
   @Test
-  def testAcls() {
+  def testAcls(): Unit = {
     val zkUtils = ZkUtils(zkConnect, zkSessionTimeout, zkConnectionTimeout, zkAclsEnabled.getOrElse(JaasUtils.isZkSecurityEnabled))
     TestUtils.verifySecureZkAcls(zkUtils, 1)
     CoreUtils.swallow(zkUtils.close(), this)

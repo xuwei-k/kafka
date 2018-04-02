@@ -68,7 +68,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
   private val topic1 = "topic-1"
 
   @Before
-  override def setUp() {
+  override def setUp(): Unit = {
     super.setUp()
 
     val numPartitions = 1
@@ -78,7 +78,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
   }
 
   @Test
-  def testThrottledProducerConsumer() {
+  def testThrottledProducerConsumer(): Unit = {
 
     val numRecords = 1000
     val producer = producers.head
@@ -94,7 +94,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
   }
 
   @Test
-  def testProducerConsumerOverrideUnthrottled() {
+  def testProducerConsumerOverrideUnthrottled(): Unit = {
     // Give effectively unlimited quota for producer and consumer
     val props = new Properties()
     props.put(DynamicConfig.Client.ProducerByteRateOverrideProp, Long.MaxValue.toString)
@@ -113,7 +113,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
   }
 
   @Test
-  def testQuotaOverrideDelete() {
+  def testQuotaOverrideDelete(): Unit = {
     // Override producer and consumer quotas to unlimited
     overrideQuotas(Long.MaxValue, Long.MaxValue, Int.MaxValue)
     waitForQuotaUpdate(Long.MaxValue, Long.MaxValue, Int.MaxValue)
@@ -138,7 +138,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
   }
 
   @Test
-  def testThrottledRequest() {
+  def testThrottledRequest(): Unit = {
 
     overrideQuotas(Long.MaxValue, Long.MaxValue, 0.1)
     waitForQuotaUpdate(Long.MaxValue, Long.MaxValue, 0.1)
@@ -193,7 +193,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
     numConsumed
   }
 
-  def waitForQuotaUpdate(producerQuota: Long, consumerQuota: Long, requestQuota: Double) {
+  def waitForQuotaUpdate(producerQuota: Long, consumerQuota: Long, requestQuota: Double): Unit = {
     TestUtils.retry(10000) {
       val quotaManagers = leaderNode.apis.quotas
       val overrideProducerQuota = quotaManagers.produce.quota(userPrincipal, producerClientId)
@@ -208,7 +208,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
     }
   }
 
-  private def verifyProducerThrottleTimeMetric(producer: KafkaProducer[_, _]) {
+  private def verifyProducerThrottleTimeMetric(producer: KafkaProducer[_, _]): Unit = {
     val tags = new HashMap[String, String]
     tags.put("client-id", producerClientId)
     val avgMetric = producer.metrics.get(new MetricName("produce-throttle-time-avg", "producer-metrics", "", tags))
@@ -218,7 +218,7 @@ abstract class BaseQuotaTest extends IntegrationTestHarness {
         s"Producer throttle metric not updated: avg=${avgMetric.value} max=${maxMetric.value}")
   }
 
-  private def verifyConsumerThrottleTimeMetric(consumer: KafkaConsumer[_, _], maxThrottleTime: Option[Double] = None) {
+  private def verifyConsumerThrottleTimeMetric(consumer: KafkaConsumer[_, _], maxThrottleTime: Option[Double] = None): Unit = {
     val tags = new HashMap[String, String]
     tags.put("client-id", consumerClientId)
     val avgMetric = consumer.metrics.get(new MetricName("fetch-throttle-time-avg", "consumer-fetch-manager-metrics", "", tags))

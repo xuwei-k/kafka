@@ -78,7 +78,7 @@ class SocketServer(val config: KafkaConfig, val metrics: Metrics, val time: Time
   /**
    * Start the socket server
    */
-  def startup() {
+  def startup(): Unit = {
     this.synchronized {
       connectionQuotas = new ConnectionQuotas(maxConnectionsPerIp, maxConnectionsPerIpOverrides)
       createAcceptorAndProcessors(config.numNetworkThreads, config.listeners)
@@ -334,7 +334,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
   /**
    * Accept loop that checks for new connection attempts
    */
-  def run() {
+  def run(): Unit = {
     serverChannel.register(nioSelector, SelectionKey.OP_ACCEPT)
     startupComplete()
     try {
@@ -409,7 +409,7 @@ private[kafka] class Acceptor(val endPoint: EndPoint,
   /*
    * Accept a new connection
    */
-  def accept(key: SelectionKey, processor: Processor) {
+  def accept(key: SelectionKey, processor: Processor): Unit = {
     val serverSocketChannel = key.channel().asInstanceOf[ServerSocketChannel]
     val socketChannel = serverSocketChannel.accept()
     try {
@@ -533,7 +533,7 @@ private[kafka] class Processor(val id: Int,
   // closed, connection ids are not reused while requests from the closed connection are being processed.
   private var nextConnectionIndex = 0
 
-  override def run() {
+  override def run(): Unit = {
     startupComplete()
     try {
       while (isRunning) {
@@ -563,14 +563,14 @@ private[kafka] class Processor(val id: Int,
     }
   }
 
-  private def processException(errorMessage: String, throwable: Throwable) {
+  private def processException(errorMessage: String, throwable: Throwable): Unit = {
     throwable match {
       case e: ControlThrowable => throw e
       case e => error(errorMessage, e)
     }
   }
 
-  private def processChannelException(channelId: String, errorMessage: String, throwable: Throwable) {
+  private def processChannelException(channelId: String, errorMessage: String, throwable: Throwable): Unit = {
     if (openOrClosingChannel(channelId).isDefined) {
       error(s"Closing socket for $channelId because of error", throwable)
       close(channelId)
@@ -578,7 +578,7 @@ private[kafka] class Processor(val id: Int,
     processException(errorMessage, throwable)
   }
 
-  private def processNewResponses() {
+  private def processNewResponses(): Unit = {
     var curr: RequestChannel.Response = null
     while ({curr = dequeueResponse(); curr != null}) {
       val channelId = curr.request.context.connectionId
@@ -607,7 +607,7 @@ private[kafka] class Processor(val id: Int,
   }
 
   /* `protected` for test usage */
-  protected[network] def sendResponse(response: RequestChannel.Response, responseSend: Send) {
+  protected[network] def sendResponse(response: RequestChannel.Response, responseSend: Send): Unit = {
     val connectionId = response.request.context.connectionId
     trace(s"Socket server received response to send to $connectionId, registering for write and sending data: $response")
     // `channel` can be None if the connection was closed remotely or if selector closed it for being idle for too long
@@ -624,7 +624,7 @@ private[kafka] class Processor(val id: Int,
     }
   }
 
-  private def poll() {
+  private def poll(): Unit = {
     try selector.poll(300)
     catch {
       case e @ (_: IllegalStateException | _: IOException) =>
@@ -634,7 +634,7 @@ private[kafka] class Processor(val id: Int,
     }
   }
 
-  private def processCompletedReceives() {
+  private def processCompletedReceives(): Unit = {
     selector.completedReceives.asScala.foreach { receive =>
       try {
         openOrClosingChannel(receive.source) match {
@@ -659,7 +659,7 @@ private[kafka] class Processor(val id: Int,
     }
   }
 
-  private def processCompletedSends() {
+  private def processCompletedSends(): Unit = {
     selector.completedSends.asScala.foreach { send =>
       try {
         val resp = inflightResponses.remove(send.destination).getOrElse {
@@ -674,13 +674,13 @@ private[kafka] class Processor(val id: Int,
     }
   }
 
-  private def updateRequestMetrics(response: RequestChannel.Response) {
+  private def updateRequestMetrics(response: RequestChannel.Response): Unit = {
     val request = response.request
     val networkThreadTimeNanos = openOrClosingChannel(request.context.connectionId).fold(0L)(_.getAndResetNetworkThreadTimeNanos())
     request.updateRequestMetrics(networkThreadTimeNanos, response)
   }
 
-  private def processDisconnected() {
+  private def processDisconnected(): Unit = {
     selector.disconnected.keySet.asScala.foreach { connectionId =>
       try {
         val remoteHost = ConnectionId.fromString(connectionId).getOrElse {
@@ -717,7 +717,7 @@ private[kafka] class Processor(val id: Int,
   /**
    * Queue up a new connection for reading
    */
-  def accept(socketChannel: SocketChannel) {
+  def accept(socketChannel: SocketChannel): Unit = {
     newConnections.add(socketChannel)
     wakeup()
   }
@@ -725,7 +725,7 @@ private[kafka] class Processor(val id: Int,
   /**
    * Register any new connections that have been queued up
    */
-  private def configureNewConnections() {
+  private def configureNewConnections(): Unit = {
     while (!newConnections.isEmpty) {
       val channel = newConnections.poll()
       try {
@@ -745,7 +745,7 @@ private[kafka] class Processor(val id: Int,
   /**
    * Close the selector and all open connections
    */
-  private def closeAll() {
+  private def closeAll(): Unit = {
     selector.channels.asScala.foreach { channel =>
       close(channel.id)
     }
@@ -811,7 +811,7 @@ class ConnectionQuotas(val defaultMax: Int, overrideQuotas: Map[String, Int]) {
   private val overrides = overrideQuotas.map { case (host, count) => (InetAddress.getByName(host), count) }
   private val counts = mutable.Map[InetAddress, Int]()
 
-  def inc(address: InetAddress) {
+  def inc(address: InetAddress): Unit = {
     counts.synchronized {
       val count = counts.getOrElseUpdate(address, 0)
       counts.put(address, count + 1)
@@ -821,7 +821,7 @@ class ConnectionQuotas(val defaultMax: Int, overrideQuotas: Map[String, Int]) {
     }
   }
 
-  def dec(address: InetAddress) {
+  def dec(address: InetAddress): Unit = {
     counts.synchronized {
       val count = counts.getOrElse(address,
         throw new IllegalArgumentException(s"Attempted to decrease connection count for address with no connections, address: $address"))

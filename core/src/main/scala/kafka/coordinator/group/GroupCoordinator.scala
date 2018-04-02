@@ -79,7 +79,7 @@ class GroupCoordinator(val brokerId: Int,
   /**
    * Startup logic executed at the same time when the server starts up.
    */
-  def startup(enableMetadataExpiration: Boolean = true) {
+  def startup(enableMetadataExpiration: Boolean = true): Unit = {
     info("Starting up.")
     if (enableMetadataExpiration)
       groupManager.enableMetadataExpiration()
@@ -91,7 +91,7 @@ class GroupCoordinator(val brokerId: Int,
    * Shutdown logic executed at the same time when server shuts down.
    * Ordering of actions should be reversed from the startup process.
    */
-  def shutdown() {
+  def shutdown(): Unit = {
     info("Shutting down.")
     isActive.set(false)
     groupManager.shutdown()
@@ -108,7 +108,7 @@ class GroupCoordinator(val brokerId: Int,
                       sessionTimeoutMs: Int,
                       protocolType: String,
                       protocols: List[(String, Array[Byte])],
-                      responseCallback: JoinCallback) {
+                      responseCallback: JoinCallback): Unit = {
     if (!isActive.get) {
       responseCallback(joinError(memberId, Errors.COORDINATOR_NOT_AVAILABLE))
     } else if (!validGroupId(groupId)) {
@@ -147,7 +147,7 @@ class GroupCoordinator(val brokerId: Int,
                           sessionTimeoutMs: Int,
                           protocolType: String,
                           protocols: List[(String, Array[Byte])],
-                          responseCallback: JoinCallback) {
+                          responseCallback: JoinCallback): Unit = {
     group.inLock {
       if (!group.is(Empty) && (!group.protocolType.contains(protocolType) || !group.supportsProtocols(protocols.map(_._1).toSet))) {
         // if the new member does not support the group protocol, reject it
@@ -236,7 +236,7 @@ class GroupCoordinator(val brokerId: Int,
                       generation: Int,
                       memberId: String,
                       groupAssignment: Map[String, Array[Byte]],
-                      responseCallback: SyncCallback) {
+                      responseCallback: SyncCallback): Unit = {
     if (!isActive.get) {
       responseCallback(Array.empty, Errors.COORDINATOR_NOT_AVAILABLE)
     } else if (!isCoordinatorForGroup(groupId)) {
@@ -253,7 +253,7 @@ class GroupCoordinator(val brokerId: Int,
                           generationId: Int,
                           memberId: String,
                           groupAssignment: Map[String, Array[Byte]],
-                          responseCallback: SyncCallback) {
+                          responseCallback: SyncCallback): Unit = {
     group.inLock {
       if (!group.has(memberId)) {
         responseCallback(Array.empty, Errors.UNKNOWN_MEMBER_ID)
@@ -306,7 +306,7 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleLeaveGroup(groupId: String, memberId: String, responseCallback: Errors => Unit) {
+  def handleLeaveGroup(groupId: String, memberId: String, responseCallback: Errors => Unit): Unit = {
     if (!isActive.get) {
       responseCallback(Errors.COORDINATOR_NOT_AVAILABLE)
     } else if (!isCoordinatorForGroup(groupId)) {
@@ -389,7 +389,7 @@ class GroupCoordinator(val brokerId: Int,
   def handleHeartbeat(groupId: String,
                       memberId: String,
                       generationId: Int,
-                      responseCallback: Errors => Unit) {
+                      responseCallback: Errors => Unit): Unit = {
     if (!isActive.get) {
       responseCallback(Errors.COORDINATOR_NOT_AVAILABLE)
     } else if (!isCoordinatorForGroup(groupId)) {
@@ -467,7 +467,7 @@ class GroupCoordinator(val brokerId: Int,
                           memberId: String,
                           generationId: Int,
                           offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
-                          responseCallback: immutable.Map[TopicPartition, Errors] => Unit) {
+                          responseCallback: immutable.Map[TopicPartition, Errors] => Unit): Unit = {
     validateGroup(groupId) match {
       case Some(error) => responseCallback(offsetMetadata.mapValues(_ => error))
       case None =>
@@ -492,7 +492,7 @@ class GroupCoordinator(val brokerId: Int,
 
   def handleTxnCompletion(producerId: Long,
                           offsetsPartitions: Iterable[TopicPartition],
-                          transactionResult: TransactionResult) {
+                          transactionResult: TransactionResult): Unit = {
     require(offsetsPartitions.forall(_.topic == Topic.GROUP_METADATA_TOPIC_NAME))
     val isCommit = transactionResult == TransactionResult.COMMIT
     groupManager.handleTxnCompletion(producerId, offsetsPartitions.map(_.partition).toSet, isCommit)
@@ -504,7 +504,7 @@ class GroupCoordinator(val brokerId: Int,
                               producerId: Long,
                               producerEpoch: Short,
                               offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
-                              responseCallback: immutable.Map[TopicPartition, Errors] => Unit) {
+                              responseCallback: immutable.Map[TopicPartition, Errors] => Unit): Unit = {
     group.inLock {
       if (group.is(Dead)) {
         responseCallback(offsetMetadata.mapValues(_ => Errors.UNKNOWN_MEMBER_ID))
@@ -569,7 +569,7 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleDeletedPartitions(topicPartitions: Seq[TopicPartition]) {
+  def handleDeletedPartitions(topicPartitions: Seq[TopicPartition]): Unit = {
     val offsetsRemoved = groupManager.cleanupGroupMetadata(groupManager.currentGroups, group => {
       group.removeOffsets(topicPartitions)
     })
@@ -587,7 +587,7 @@ class GroupCoordinator(val brokerId: Int,
       None
   }
 
-  private def onGroupUnloaded(group: GroupMetadata) {
+  private def onGroupUnloaded(group: GroupMetadata): Unit = {
     group.inLock {
       info(s"Unloading group metadata for ${group.groupId} with generation ${group.generationId}")
       val previousState = group.currentState
@@ -616,7 +616,7 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  private def onGroupLoaded(group: GroupMetadata) {
+  private def onGroupLoaded(group: GroupMetadata): Unit = {
     group.inLock {
       info(s"Loading group metadata for ${group.groupId} with generation ${group.generationId}")
       assert(group.is(Stable) || group.is(Empty))
@@ -624,27 +624,27 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleGroupImmigration(offsetTopicPartitionId: Int) {
+  def handleGroupImmigration(offsetTopicPartitionId: Int): Unit = {
     groupManager.loadGroupsForPartition(offsetTopicPartitionId, onGroupLoaded)
   }
 
-  def handleGroupEmigration(offsetTopicPartitionId: Int) {
+  def handleGroupEmigration(offsetTopicPartitionId: Int): Unit = {
     groupManager.removeGroupsForPartition(offsetTopicPartitionId, onGroupUnloaded)
   }
 
-  private def setAndPropagateAssignment(group: GroupMetadata, assignment: Map[String, Array[Byte]]) {
+  private def setAndPropagateAssignment(group: GroupMetadata, assignment: Map[String, Array[Byte]]): Unit = {
     assert(group.is(CompletingRebalance))
     group.allMemberMetadata.foreach(member => member.assignment = assignment(member.memberId))
     propagateAssignment(group, Errors.NONE)
   }
 
-  private def resetAndPropagateAssignmentError(group: GroupMetadata, error: Errors) {
+  private def resetAndPropagateAssignmentError(group: GroupMetadata, error: Errors): Unit = {
     assert(group.is(CompletingRebalance))
     group.allMemberMetadata.foreach(_.assignment = Array.empty[Byte])
     propagateAssignment(group, error)
   }
 
-  private def propagateAssignment(group: GroupMetadata, error: Errors) {
+  private def propagateAssignment(group: GroupMetadata, error: Errors): Unit = {
     for (member <- group.allMemberMetadata) {
       if (member.awaitingSyncCallback != null) {
         member.awaitingSyncCallback(member.assignment, error)
@@ -676,7 +676,7 @@ class GroupCoordinator(val brokerId: Int,
   /**
    * Complete existing DelayedHeartbeats for the given member and schedule the next one
    */
-  private def completeAndScheduleNextHeartbeatExpiration(group: GroupMetadata, member: MemberMetadata) {
+  private def completeAndScheduleNextHeartbeatExpiration(group: GroupMetadata, member: MemberMetadata): Unit = {
     // complete current heartbeat expectation
     member.latestHeartbeat = time.milliseconds()
     val memberKey = MemberKey(member.groupId, member.memberId)
@@ -688,7 +688,7 @@ class GroupCoordinator(val brokerId: Int,
     heartbeatPurgatory.tryCompleteElseWatch(delayedHeartbeat, Seq(memberKey))
   }
 
-  private def removeHeartbeatForLeavingMember(group: GroupMetadata, member: MemberMetadata) {
+  private def removeHeartbeatForLeavingMember(group: GroupMetadata, member: MemberMetadata): Unit = {
     member.isLeaving = true
     val memberKey = MemberKey(member.groupId, member.memberId)
     heartbeatPurgatory.checkAndComplete(memberKey)
@@ -718,20 +718,20 @@ class GroupCoordinator(val brokerId: Int,
   private def updateMemberAndRebalance(group: GroupMetadata,
                                        member: MemberMetadata,
                                        protocols: List[(String, Array[Byte])],
-                                       callback: JoinCallback) {
+                                       callback: JoinCallback): Unit = {
     member.supportedProtocols = protocols
     member.awaitingJoinCallback = callback
     maybePrepareRebalance(group)
   }
 
-  private def maybePrepareRebalance(group: GroupMetadata) {
+  private def maybePrepareRebalance(group: GroupMetadata): Unit = {
     group.inLock {
       if (group.canRebalance)
         prepareRebalance(group)
     }
   }
 
-  private def prepareRebalance(group: GroupMetadata) {
+  private def prepareRebalance(group: GroupMetadata): Unit = {
     // if any members are awaiting sync, cancel their request and have them rejoin
     if (group.is(CompletingRebalance))
       resetAndPropagateAssignmentError(group, Errors.REBALANCE_IN_PROGRESS)
@@ -755,7 +755,7 @@ class GroupCoordinator(val brokerId: Int,
     joinPurgatory.tryCompleteElseWatch(delayedRebalance, Seq(groupKey))
   }
 
-  private def removeMemberAndUpdateGroup(group: GroupMetadata, member: MemberMetadata) {
+  private def removeMemberAndUpdateGroup(group: GroupMetadata, member: MemberMetadata): Unit = {
     group.remove(member.memberId)
     group.currentState match {
       case Dead | Empty =>
@@ -772,11 +772,11 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def onExpireJoin() {
+  def onExpireJoin(): Unit = {
     // TODO: add metrics for restabilize timeouts
   }
 
-  def onCompleteJoin(group: GroupMetadata) {
+  def onCompleteJoin(group: GroupMetadata): Unit = {
     group.inLock {
       // remove any members who haven't joined the group yet
       group.notYetRejoinedMembers.foreach { failedMember =>
@@ -834,7 +834,7 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def onExpireHeartbeat(group: GroupMetadata, member: MemberMetadata, heartbeatDeadline: Long) {
+  def onExpireHeartbeat(group: GroupMetadata, member: MemberMetadata, heartbeatDeadline: Long): Unit = {
     group.inLock {
       if (!shouldKeepMemberAlive(member, heartbeatDeadline)) {
         info(s"Member ${member.memberId} in group ${group.groupId} has failed, removing it from the group")
@@ -843,7 +843,7 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def onCompleteHeartbeat() {
+  def onCompleteHeartbeat(): Unit = {
     // TODO: add metrics for complete heartbeats
   }
 

@@ -71,7 +71,7 @@ class KafkaScheduler(val threads: Int,
   private var executor: ScheduledThreadPoolExecutor = null
   private val schedulerThreadId = new AtomicInteger(0)
 
-  override def startup() {
+  override def startup(): Unit = {
     debug("Initializing task scheduler.")
     this synchronized {
       if(isStarted)
@@ -86,7 +86,7 @@ class KafkaScheduler(val threads: Int,
     }
   }
   
-  override def shutdown() {
+  override def shutdown(): Unit = {
     debug("Shutting down task scheduler.")
     // We use the local variable to avoid NullPointerException if another thread shuts down scheduler at same time.
     val cachedExecutor = this.executor
@@ -99,7 +99,7 @@ class KafkaScheduler(val threads: Int,
     }
   }
 
-  def schedule(name: String, fun: ()=>Unit, delay: Long, period: Long, unit: TimeUnit) {
+  def schedule(name: String, fun: ()=>Unit, delay: Long, period: Long, unit: TimeUnit): Unit = {
     debug("Scheduling task %s with initial delay %d ms and period %d ms."
         .format(name, TimeUnit.MILLISECONDS.convert(delay, unit), TimeUnit.MILLISECONDS.convert(period, unit)))
     this synchronized {
